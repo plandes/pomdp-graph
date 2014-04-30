@@ -49,32 +49,23 @@
         ;dg (DefaultListenableGraph. (DirectedPseudograph. DefaultEdge))
         dg (DefaultListenableGraph. (DirectedMultigraph. String))
         adapt (JGraphXAdapter. dg)
-        layout (mxCircleLayout. adapt)
+        layout (mxCircleLayout. adapt )
+        ;layout (com.mxgraph.layout.hierarchical.mxHierarchicalLayout. adapt)
         ]
     (-> (.getContentPane frame) (.add (mxGraphComponent. adapt)))
-
     (apply fn-create-graph (concat args (list dg)))
-
-    (-> frame (.setSize 500 500))
     (-> frame (.setVisible true))
-    ;(-> frame (.setDefaultCloseOperation JFrame/DISPOSE_ON_CLOSE))
     (-> frame (.setLocation 1400 0))
-
     (-> layout (.execute (.getDefaultParent adapt)))
-    frame
-    ))
+    (-> frame (.pack))
+    frame))
 
 (defn create-pg-map [pg-data]
   (into {}
    (map #(let [node %]
-           {
-            (first node)
-            {
-             :action (second node)
-             :next (drop 2 node)
-            }
-            }
-           )
+           { (first node)
+            { :action (second node)
+             :next (drop 2 node) } } )
         pg-data)))
 
 (defn get-node-name [elt actions]
@@ -105,9 +96,8 @@
         (let [next-name (get-node-name (list (nth next i)
                                              (get pg (nth next i))) actions)
               edge (nth obs i)]
-          (println node-name "->" next-name " name=" edge
-                   (-> dg (.addEdge node-name next-name (str edge j))))
-          )))))
+          (println node-name "->" next-name " name=" edge)
+          (-> dg (.addEdge node-name next-name (str edge j))))))))
 
 (defn tmp []
   (let [pomdp (File. "/Users/landes/view/uic/2014/ai2/view/proj5/ex/tiger.aaai.pomdp")
