@@ -18,9 +18,7 @@
    #'*frame*
    (fn [x]
      (if *frame*
-       (do
-         ;(println "disposing " *frame*)
-         (.dispose *frame*)))
+       (.dispose *frame*))
      (JFrame. "PomDP")))
   *frame*)
 
@@ -40,22 +38,25 @@
   (with-open [rdr (io/reader pg-file)]
     (doall
      (map #(let [line %]
-             (map #'read-string (split line #"\s+")))
+             (let [row (map #'read-string (split line #"\s+"))]
+               (replace { (symbol "-") (first row) } row)))
           (line-seq rdr)))))
 
-(defn setup-gui [fn-create-graph args]
+(defn setup-gui [fn-create-graph die-on-close args]
   (let [frame (get-frame)
         ;dg (ListenableDirectedGraph. DefaultEdge)
-        ;dg (DefaultListenableGraph. (DirectedPseudograph. DefaultEdge))
-        dg (DefaultListenableGraph. (DirectedMultigraph. String))
+        dg (DefaultListenableGraph. (DirectedPseudograph. String))
+        ;dg (DefaultListenableGraph. (DirectedMultigraph. String))
         adapt (JGraphXAdapter. dg)
-        layout (mxCircleLayout. adapt )
+        layout (mxCircleLayout. adapt 400)
         ;layout (com.mxgraph.layout.hierarchical.mxHierarchicalLayout. adapt)
         ]
     (-> (.getContentPane frame) (.add (mxGraphComponent. adapt)))
     (apply fn-create-graph (concat args (list dg)))
     (-> frame (.setVisible true))
     (-> frame (.setLocation 1400 0))
+    (if die-on-close
+      (-> frame (.setDefaultCloseOperation JFrame/EXIT_ON_CLOSE)))
     (-> layout (.execute (.getDefaultParent adapt)))
     (-> frame (.pack))
     frame))
@@ -99,37 +100,34 @@
           (println node-name "->" next-name " name=" edge)
           (-> dg (.addEdge node-name next-name (str edge j))))))))
 
-(defn tmp []
-  (let [pomdp (File. "/Users/landes/view/uic/2014/ai2/view/proj5/ex/tiger.aaai.pomdp")
-        pg-file (File. "/Users/landes/view/uic/2014/ai2/view/proj5/ex/tiger.pg")
-        pg-data (parse-pg pg-file)
+(defn run-graph [pomdp pg-file die-on-close]
+  (let [pg-data (parse-pg pg-file)
         pg (create-pg-map pg-data)
         states (scrape pomdp "states")
         actions (scrape pomdp "actions")
         observations (scrape pomdp "observations")]
-    (setup-gui create-graph (list pg states actions observations))
+    (setup-gui create-graph die-on-close (list pg states actions observations))
     pg))
-(tmp)
 
 (defn run [opts args]
-  (let [out-file (File. (:out-file opts))]
-    (println (str "wrote " out-file))))
+  (run-graph (File. (:input-pomdp opts)) (File. (:pg opts)) true)
+  (println "created graph"))
         
 (defn -main
   [& args]
   (let [[opts args banner]
         (cli args
              ["-h" "--help" "Show help" :flag true :default false]
-             ["-i" "--in-file" "REQUIRED: template excel file FILE"]
-             ["-o" "--out-file" "REQUIRED: output excel file FILE"]
+             ["-i" "--input-pomdp" "REQUIRED: the input .pomdp file"]
+             ["-o" "--pg" "REQUIRED: output .pg file"]
              )]
     (when (:help opts)
       (println banner)
       (System/exit 0))
     (if
         (and
-         (:in-file opts)
-         (:out-file opts))
+         (:input-pomdp opts)
+         (:pg opts))
       (do
         (println "")
         (run opts args))
